@@ -13,7 +13,7 @@
         #topNavbar {
             margin-bottom: 0px;
         }
-        .platform {
+        #mainbody {
             margin-top: 50px;
         }
     </style>
@@ -94,13 +94,58 @@
     </div>
 </nav>
 
-<div class="platform">
+<div class="container" id="mainbody">
     <div class="row">
             <div class="col-lg-12 text-center">
                 <img class='img-responsive img-circle' id='profileImage' alt='' style='width:200px;height:200px;margin:0 auto'>
                 <div id='personal-info'></div>
                 <button type="button" class="btn btn-primary" onclick="myFacebookLogout()">Logout with Facebook</button>
             </div>
+    </div>
+    <div class="row">
+        {% if not activeGroup %}
+            <h3>You don't have any travel records.</h3>
+        {% else %}
+            <ul style="list-style: none">
+                {% for group in activeGroup %}
+                    <li>
+                        <div class="panel panel-info">
+                            <div class="panel-heading">
+                                <h3 class="panel-title">My Paths</h3>
+                            </div>
+                            <div class="panel-body">
+                                <div class="row">
+                                    <div class="form-group form-inline">
+                                        <div class="col-xs-3">
+                                            <h3><span class="label label-primary">Origin</span></h3>
+                                        </div>
+                                        <div class="col-xs-3">
+                                            <h3>{{ group.origin }}</h3>
+                                        </div>
+                                        <div class="col-xs-3">
+                                            <h3><span class="label label-primary">Destination</span></h3>
+                                        </div>
+                                        <div class="col-xs-3">
+                                            <h3>{{ group.destination }}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="form-group form-inline">
+                                        <div class="col-xs-4">
+                                            <h3><span class="label label-primary">Departure Time</span></h3>
+                                        </div>
+                                        <div class="col-xs-3">
+                                            <h3>{{ group.departure_time }}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
     </div>
 </div>
 

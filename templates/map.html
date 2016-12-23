@@ -29,11 +29,19 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 
     <script>
+
+        var token;
         function statusChangeCallback(response) {
             console.log('statusChangeCallback');
             console.log(response);
+            console.log(response.authResponse);
+            console.log(response.authResponse.accessToken);
             if (response.status !== 'connected') {
                 window.location = "/";
+            } else {
+                console.log("I am hideRealTimeCrime");
+                token = response.authResponse.accessToken;
+                console.log('Executed'+token);
             }
         }
         window.fbAsyncInit = function () {
@@ -76,8 +84,7 @@
         <div id="navbar" class="navbar-collapse collapse">
             <ul class="nav navbar-nav">
                 <li class="active"><a href="/map">Map</a></li>
-                <li><a href="/explore">Explore</a></li>
-                <li><a href="/profile">Profile</a></li>
+                <li><a href="javascript: profilePage();" >Profile</a></li>
                 <li><a href="/shuttle">Shuttle</a></li>
             </ul>
             <ul class="nav navbar-nav navbar-right">
@@ -209,7 +216,7 @@
     var groupDescription;
 
 
-    var currentPosition;
+    var currentPosition = {lat: 40.809957, lng: -73.961454};
     var policeStationMarkers = [];
     var realTimeCrimeMarkers = [];
 
@@ -219,6 +226,8 @@
     var clickCounter = 0;
     var firstPlace = {lat: 0, lng: 0};
     var secondPlace = {lat: 0, lng: 0};
+
+    //var accessToken = token;
 
     function initMap() {
 
@@ -412,11 +421,11 @@
             travelMode: selectedMode,
             travelType: travelType,
             departureTime: departureTime,
-            groupDescription: groupDescription
+            groupDescription: groupDescription,
+            accessToken: token
         };
-        socket.emit('createGroupPath', createGroupPath, function(){
-            window.location = '/explore';
-        });
+        console.log('Executed fffff');
+        socket.emit('createGroupPath', createGroupPath);
     });
 
 
@@ -440,7 +449,8 @@
             destinationPosition: destinationPosition,
             travelMode: selectedMode,
             travelType: travelType,
-            departureTime: departureTime
+            departureTime: departureTime,
+            accessToken: token
         };
         socket.emit('userPath', userPath);
     }
@@ -523,6 +533,24 @@
             crimeRectangles.push(rectangle);
             console.log(crimeRectangles.length);
         }
+    }
+
+    $('#exploreGroupButton').on('click', function() {
+        var url = '/explore';
+        console.log(token);
+        var form = $('<form action="' + url + '" method="post">' + 
+            '<input type="text" name="accessToken" value="' + token + '" />' +
+            '</form>');
+        form.submit();
+    });
+
+    function profilePage() {
+        var url = '/profile';
+        console.log(token);
+        var form = $('<form action="' + url + '" method="post">' + 
+            '<input type="text" name="accessToken" value="' + token + '" />' +
+            '</form>');
+        form.submit();
     }
 
 </script>

@@ -16,15 +16,14 @@ socketio = SocketIO(application)
 
 acc_token = 'EAAZABSTsjkwEBABd5p2xh74xyergfCOs8uAVDn9H6qNPss2JRF8Xf6iDje46NZATiI6gCtnhDdNx7xVBYvi2zmudkwakzuEPK8gd67ZAA3mfNeDeWhPcQOOlrYyBqiVL8lUXkWUG4Yf4ZBgu0RfUGp0MjSl2gexopOSuBweungZDZD'
 
-# boto3.resource(
-#             'dynamodb',
-#             region_name=os.environ['AWS_DYNAMO_REGION'],
-#             endpoint_url=os.environ['AWS_DYNAMO_ENDPOINT'],
-#             aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
-#             aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'])
+boto3.resource(
+             'dynamodb',
+             region_name='us-west-2',
+             aws_secret_access_key='0wQ00CP6t6MPP/aFH3QAz7p5bUuMF+cy5Dt3G1ap',
+             aws_access_key_id='AKIAIDPLNXWXJJA7NCEA')
 
-db = boto3.resource('dynamodb')
-s3 = boto3.resource('s3')
+db = boto3.resource('dynamodb', region_name = 'us-west-2')
+#s3 = boto3.resource('s3', region_name = 'us-west-2')
 
 user_table = db.Table('User')
 route_table = db.Table('Route')
@@ -32,10 +31,10 @@ group_table = db.Table('Group')
 
 
 # Get SNS resource
-client = boto3.client('sns', region_name = 'us-west-2')
-response = client.create_topic(Name = 'emergencyContact')
-topicArn = response['TopicArn']
-subscribeResponse = client.subscribe(TopicArn = topicArn, Protocol = 'SMS', Endpoint = '1-917-331-4849')
+#client = boto3.client('sns', region_name = 'us-west-2')
+#response = client.create_topic(Name = 'emergencyContact')
+#topicArn = response['TopicArn']
+#subscribeResponse = client.subscribe(TopicArn = topicArn, Protocol = 'SMS', Endpoint = '1-917-331-4849')
 
 
 @application.route('/', methods=['GET', 'POST', 'PUT'])
@@ -48,37 +47,66 @@ def map():
     return render_template('map.html')
 
 
-@application.route('/explore')
+@application.route('/explore', methods=['GET', 'POST'])
 def explore():
-    print("loading explore")
-    graph = facebook.GraphAPI(access_token=acc_token)
-    Profile = graph.get_object('me')
-    user_id = Profile['id']
-    response = group_table.scan(
-        FilterExpression=Attr('flag').eq(1)
-    )
-    restGroup = []
-    activeGroup = []
-    owner = False
-    items = response['Items']
-    for item in items:
-        if decimal.Decimal(user_id) in [dic['id'] for dic in item['user_list']]:
-            if decimal.Decimal(user_id) == [dic['id'] for dic in item['user_list']][0]:
-                owner = True
-                activeGroup = item
+    if request.method == 'POST':
+        value = request.form.get('accessToken', None)
+        print ("explore" + value)
+
+        acc_token = value
+
+        print("loading explore")
+        graph = facebook.GraphAPI(access_token=acc_token)
+        Profile = graph.get_object('me')
+        user_id = Profile['id']
+        response = group_table.scan(
+            FilterExpression=Attr('flag').eq(1)
+        )
+        restGroup = []
+        activeGroup = []
+        owner = False
+        items = response['Items']
+        for item in items:
+            if decimal.Decimal(user_id) in [dic['id'] for dic in item['user_list']]:
+                if decimal.Decimal(user_id) == [dic['id'] for dic in item['user_list']][0]:
+                    owner = True
+                    activeGroup = item
+                else:
+                    activeGroup = item
+                group_id = item['GroupID']
+                print(group_id)
             else:
-                activeGroup = item
-            group_id = item['GroupID']
-            print(group_id)
-        else:
-            restGroup.append(item)
-    context = dict(restGroup=restGroup, activeGroup=activeGroup, owner=owner)
-    return render_template('explore.html', **context)
+                restGroup.append(item)
+        context = dict(restGroup=restGroup, activeGroup=activeGroup, owner=owner)
+        return render_template('explore.html', **context)
 
 
-@application.route('/profile')
+@application.route('/profile', methods = ['GET', 'POST'])
 def profile():
-    return render_template('profile.html')
+
+    if request.method == 'POST':
+        value = request.form.get('accessToken', None)
+        print ("profile" + value)
+
+        acc_token = value;
+        graph = facebook.GraphAPI(access_token=acc_token)
+        Profile = graph.get_object('me')
+        user_id = Profile['id']
+        response = group_table.scan(
+            FilterExpression=Attr('flag').eq(1)
+        )
+        restGroup = []
+        activeGroup = []
+        owner = False
+        items = response['Items']
+        for item in items:
+            if decimal.Decimal(user_id) in [dic['id'] for dic in item['user_list']]:
+                if decimal.Decimal(user_id) == [dic['id'] for dic in item['user_list']][0]:
+                    activeGroup.append(item)
+
+
+        context = dict(activeGroup=activeGroup)
+        return render_template('profile.html', **context)
 
 
 @application.route('/shuttle')
@@ -88,6 +116,8 @@ def shuttle():
 
 @socketio.on('userPath')
 def handle_userPath(message):
+    acc_token = str(message.get('accessToken'))
+
     origin = str(message.get('origin'))
     destination = str(message.get('destination'))
     origins = re.findall("\d+\.\d+", origin)
@@ -138,12 +168,14 @@ def handle_userProfile(message):
 
 @socketio.on('createGroupPath')
 def handle_createGroup(message):
+    acc_token = str(message.get('accessToken'))
+    print(acc_token)
     graph = facebook.GraphAPI(access_token=acc_token)
     Profile = graph.get_object(id='me?')
     user_id = int(Profile['id'])
     user_name = Profile['name']
     users = [{'id': user_id, 'name': user_name}]
-
+    print('Group created 111111111111222222222222222')
     origin = str(message.get('origin'))
     destination = str(message.get('destination'))
     originPosition = str(message.get('originPosition'))
@@ -157,7 +189,7 @@ def handle_createGroup(message):
         description = message.get('groupDescription')
     else:
         description = 'No description'
-
+    print('Group created 111111111111')
     conversation = [{'name': user_name, 'content': 'Group Created'}]
     time = message.get('departureTime')
     group_id = str(uuid.uuid4())
@@ -188,12 +220,14 @@ def handle_createGroup(message):
         departure_time=time,
         travel_type=travel_type, 
         users=users)))
-    s3.Bucket('lionlog').upload_file('logs.txt',
-                                     'logs.txt')
+    #s3.Bucket('lionlog').upload_file('logs.txt',
+    #                                 'logs.txt')
 
 
 @socketio.on('joinGroup')
 def handle_join_group(message):
+    acc_token = message.get('accessToken')
+    print(acc_token)
     graph = facebook.GraphAPI(access_token=acc_token)
     Profile = graph.get_object(id='me')
     user_id = int(Profile['id'])
@@ -218,8 +252,8 @@ def handle_join_group(message):
 
     print('User added to group')
     open(r'logs.txt', 'a').write('\n\n' + str(item))
-    s3.Bucket('lionlog').upload_file('logs.txt',
-                                     'logs.txt')
+    #s3.Bucket('lionlog').upload_file('logs.txt',
+    #                                 'logs.txt')
     room = group_id
     join_room(room)
     socketio.emit('notification', {'content': str(user_name) + ' has entered group!'}, room=room)
@@ -228,6 +262,8 @@ def handle_join_group(message):
 
 @socketio.on('leaveGroup')
 def handle_leave_group(message):
+    acc_token = message.get('accessToken')
+
     graph = facebook.GraphAPI(access_token=acc_token)
     Profile = graph.get_object(id='me')
     user_id = int(Profile['id'])
@@ -247,6 +283,8 @@ def handle_leave_group(message):
 
 @socketio.on('sendChat')
 def handle_send_chat(message):
+    acc_token = message.get('accessToken')
+
     graph = facebook.GraphAPI(access_token=acc_token)
     Profile = graph.get_object(id='me')
     user_id = int(Profile['id'])
@@ -276,7 +314,7 @@ def handle_join_room(message):
 def handle_emergency(coordinates):
     message = "Something bad happened on me! Check " + json.dumps(coordinates)
 
-    publichResponse = client.publish(TopicArn = topicArn, Message = message)
+    #publichResponse = client.publish(TopicArn = topicArn, Message = message)
 
 # run the app.
 if __name__ == "__main__":
