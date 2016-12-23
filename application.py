@@ -5,7 +5,7 @@ from boto3.dynamodb.conditions import Key, Attr
 from flask import Flask, request
 from flask import render_template
 from flask_socketio import SocketIO, emit, leave_room, join_room, send
-# import facebook
+import facebook
 import boto3
 import re
 import json
