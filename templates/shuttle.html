@@ -75,9 +75,7 @@
         <div id="navbar" class="navbar-collapse collapse">
             <ul class="nav navbar-nav">
                 <li><a href="/map">Map</a></li>
-                <li><a href="/explore">Explore</a></li>
-                <li><a href="/friends">Friends</a></li>
-                <li><a href="/profile">Profile</a></li>
+                <li><a href="javascript: profilePage()">Profile</a></li>
                 <li class="active"><a href="/shuttle">Shuttle</a></li>
             </ul>
         </div>
@@ -255,6 +253,15 @@
         redLineTime.innerText = nextBusTime;
         var blueLineTime = document.getElementById('blueLineTime');
         blueLineTime.innerText = nextBusTime;
+    }
+
+    function profilePage() {
+        var url = '/profile';
+        console.log(token);
+        var form = $('<form action="' + url + '" method="post">' +
+            '<input type="text" name="accessToken" value="' + token + '" />' +
+            '</form>');
+        form.submit();
     }
 </script>
 <script async defer

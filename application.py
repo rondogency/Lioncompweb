@@ -5,7 +5,7 @@ from boto3.dynamodb.conditions import Key, Attr
 from flask import Flask, request
 from flask import render_template
 from flask_socketio import SocketIO, emit, leave_room, join_room, send
-import facebook
+# import facebook
 import boto3
 import re
 import json
@@ -315,6 +315,11 @@ def handle_emergency(coordinates):
     message = "Something bad happened on me! Check " + json.dumps(coordinates)
 
     #publichResponse = client.publish(TopicArn = topicArn, Message = message)
+
+
+@application.route('/videoTest')
+def handle_video():
+    return render_template('videoTest.html')
 
 # run the app.
 if __name__ == "__main__":
