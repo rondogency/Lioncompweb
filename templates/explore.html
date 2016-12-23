@@ -26,6 +26,9 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
 
     <script>
+        var user_name;
+        var user_id;
+        var user_link;
         function statusChangeCallback(response) {
             console.log('statusChangeCallback');
             console.log(response);
@@ -119,19 +122,14 @@
                                         <div class="col-xs-3">
                                             <h3 style="font-size: 20px;">{{ activeGroup.departure_time }}</h3>
                                         </div>
-                                        <div class="col-xs-2">
+                                        <div class="col-xs-3">
                                             <button class="btn btn-danger" id="{{ activeGroup.GroupID }}"
                                                     onclick="leaveGroup(this.id)" groupID="{{ activeGroup.GroupID }}">
                                                     <strong>Leave Group</strong>
                                             </button>
-                                            {% if owner %}
-                                            <button class="btn btn-success" id="{{ activeGroup.GroupID }}"
-                                                    onclick="startTravel(this.id)" groupID="{{ activeGroup.GroupID }}">
-                                                    <strong>Start</strong>
-                                            </button>
-                                            {% endif %}
+
                                         </div>
-                                        <div class="col-xs-4">
+                                        <div class="col-xs-3">
                                             <p style="font-size: 1px; visibility: hidden">{{ activeGroup.GroupID }}</p>
                                         </div>
                                     </div>
@@ -151,7 +149,7 @@
                                         <div class="col-xs-3">
                                             <h3><span class="label label-primary">Members</span></h3>
                                         </div>
-                                        <div class="col-xs-8">
+                                        <div class="col-xs-3">
                                         {% for user in activeGroup.user_list %}
                                             <a href="http://www.facebook.com" target="_blank">{{ user.name }}</a>
                                         {% endfor %}
@@ -165,7 +163,7 @@
                                         </div>
                                         <div class="col-xs-8" id="chatarea">
                                             {% for map in activeGroup.conversation %}
-                                                <p>{{ map.name }} says {{ map.content }}</p>
+                                                <p>{{ map.name }} says: {{ map.content }}</p>
                                             {% endfor %}
                                         </div>
                                     </div>
@@ -173,7 +171,10 @@
                                 <div class="row">
                                     <div class="col-xs-3">
                                         <input type="text" class="form-control" id="chat" placeholder="Start chat......">
-                                        <button type="button" class="btn btn-info btn-sm" id="chatbutton">Send</button>
+                                        <button class="btn btn-info btn-sm" id="chatbutton"
+                                                onclick="sendChat()" groupID="{{ activeGroup.GroupID }}">
+                                                <strong>Send</strong>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -264,14 +265,24 @@
 </div>
 
 <script>
-    var socket = io.connect(null, {port: location.port, rememberTransport: false});
+    var socket = io.connect(null, {port: location.port, rememberTransport: true});
+    
+    var Button = document.getElementById('chatbutton');
+    if (Button){
+        var GroupID = Button.getAttribute("groupID");
+        console.log(GroupID);
+        socket.emit('room', {'GroupID':GroupID});
+    }
+
     socket.on('notification', function(msg) {
-        location.reload();
         window.alert(msg.content);
+        console.log(msg.content);
+        location.reload();
     });
 
     socket.on('receiveChat', function(msg) {
-         $('#chatarea').append('<p>'+msg+'</p>');
+        console.log(msg);
+         $('#chatarea').append('<p>Ziyi Mu says: '+msg.content+'</p>');
     });
 
     function joinGroup(id) {
@@ -290,19 +301,15 @@
         socket.emit("leaveGroup", groupInfo);
     }
 
-    $('#chatbutton').on('click', function () {
-        message = document.getElementById("chat").value;
+    function sendChat() {
+        var sendChatButton = document.getElementById('chatbutton');
+        var currentGroupID = sendChatButton.getAttribute("groupID");
+        var text = document.getElementById("chat").value; 
+        var message = {GroupID: currentGroupID, content: text};
         console.log(message);
-        socket.emit('sendChat', message);
-    });
-
-    function startTravel(id) {
-
+        socket.emit("sendChat", message);
     }
 
-    function endTravel(id) {
-
-    }
 </script>
 
 <script src="../static/js/bootstrap.min.js"></script>

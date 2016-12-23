@@ -14,7 +14,7 @@ application = Flask(__name__)
 
 socketio = SocketIO(application)
 
-acc_token = 'EAAZABSTsjkwEBAKpgQxxSMbEZAyZBIy6BvPjgmvGvY41Ij1xoglPfhZAlDZCLjZBI8mPZCd9bnZBh3nhgLosm7qbOPIzIcva7cLZAwPCCyqeCZBvWSz4dZAaZBhjlz3yhZBc6P2RRCpZCDuQEAdDtKEvNSZCsR2MblqqV2PBrKV8AdbcpFtKwZDZD'
+acc_token = 'EAAZABSTsjkwEBAKMxtsaevgCvZA6fUUDt9FuKntmErXdDfAkpswmKIzvNpd2Ihewd6flYURcZBOtvuWiRZB65LJxw1gkHmuf6jNAYDTVnPH5IbuqZCbN8fNTZBMIntzvnrcz9Yaa0bqeuDyNxfXldEcM76c3MpmtOvgGBwTZB2asAZDZD'
 
 # boto3.resource(
 #             'dynamodb',
@@ -42,6 +42,7 @@ def map():
 
 @application.route('/explore')
 def explore():
+    print("loading explore")
     graph = facebook.GraphAPI(access_token=acc_token)
     Profile = graph.get_object('me')
     user_id = Profile['id']
@@ -53,14 +54,14 @@ def explore():
     owner = False
     items = response['Items']
     for item in items:
-        print(user_id)
-        print(item['user_list'])
         if decimal.Decimal(user_id) in [dic['id'] for dic in item['user_list']]:
             if decimal.Decimal(user_id) == [dic['id'] for dic in item['user_list']][0]:
                 owner = True
                 activeGroup = item
             else:
                 activeGroup = item
+            group_id = item['GroupID']
+            print(group_id)
         else:
             restGroup.append(item)
     context = dict(restGroup=restGroup, activeGroup=activeGroup, owner=owner)
@@ -136,10 +137,9 @@ def handle_userProfile(message):
 @socketio.on('createGroupPath')
 def handle_createGroup(message):
     graph = facebook.GraphAPI(access_token=acc_token)
-    Profile = graph.get_object(id='me?fields=id,name,email,link')
+    Profile = graph.get_object(id='me?')
     user_id = int(Profile['id'])
     user_name = Profile['name']
-    print(Profile)
     users = [{'id':user_id,'name':user_name}]
 
     origin = str(message.get('origin'))
@@ -177,9 +177,17 @@ def handle_createGroup(message):
             'conversation': conversation
         }
     )
-    #room = group_id
-    #join_room(room)
+    room = group_id
+    join_room(room)
     print('Group created')
+    open(r'logs.txt', 'a').write('\n' + str(dict(
+        originLat=decimal.Decimal(origins[0]),
+        originLong=decimal.Decimal(origins[1]),
+        destinationLat=decimal.Decimal(dests[0]),
+        destinationLong=decimal.Decimal(dests[1]), travel_mode=travel_mode,
+        travel_type=travel_type, user=user_id)))
+    s3.Bucket('lionlog').upload_file('logs.txt',
+                                     'logs.txt')
 
 
 @socketio.on('joinGroup')
@@ -198,10 +206,22 @@ def handle_join_group(message):
             ':user': [{'id':user_id,'name':user_name}]
         }
     )
-    #room = group_id
-    #join_room(room)
-    #socketio.emit('notification', {'content': str(user_name) + ' has entered group!'}, room=room)
-    socketio.emit('notification', {'content': str(user_name) + ' has entered group!'})
+    response = group_table.get_item(
+        Key={
+            'GroupID': group_id
+        }
+    )
+    item = response['Item']
+    item['user_list'] = user_id
+
+    print('User added to group')
+    open(r'logs.txt', 'a').write('\n\n' + str(item))
+    s3.Bucket('lionlog').upload_file('logs.txt',
+                                     'logs.txt')
+    room = group_id
+    print(room)
+    join_room(room)
+    socketio.emit('notification', {'content': str(user_name) + ' has entered group!'}, room=room)
     print('User added to group')
 
 
@@ -218,27 +238,39 @@ def handle_leave_group(message):
         },
         UpdateExpression='REMOVE user_list[0]'
     )
-    #room = group_id
-    #socketio.emit('notification', {'content': str(user_name) + ' has left group!'}, room=room)
-    socketio.emit('notification', {'content': str(user_name) + ' has left group!'})
-    #leave_room(room)
+    room = group_id
+    socketio.emit('notification', {'content': str(user_name) + ' has left group!'}, room=room)
+    leave_room(room)
     print('User left group')
 
 
 @socketio.on('sendChat')
 def handle_send_chat(message):
-    text = message
+    graph = facebook.GraphAPI(access_token=acc_token)
+    Profile = graph.get_object(id='me')
+    user_id = int(Profile['id'])
+    user_name = Profile['name']
+    group_id = message.get('GroupID')
+    text = message.get('content')
     print(text)
-    socketio.emit('receiveChat', {'content': text})
+    group_table.update_item(
+        Key={
+            'GroupID': group_id
+        },
+        UpdateExpression='SET conversation = list_append(conversation, :item)',
+        ExpressionAttributeValues={
+            ':item': [{'name': user_name, 'content': text}]
+        }
+    )
+    room = group_id
+    print(room)
+    socketio.emit('receiveChat', {'content': text}, room=room)
 
-@socketio.on('startTravel')
-def handle_start_travel(message):
-    pass
 
-
-@socketio.on('endTravel')
-def handle_start_travel(message):
-    pass
+@socketio.on('room')
+def handle_join_room(message):
+    room = message.get('GroupID')
+    join_room(room)
 
 
 # run the app.
