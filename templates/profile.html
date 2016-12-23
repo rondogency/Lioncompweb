@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Lioncomp</title>
+    <style>
+        html, body{
+            height: 100%;
+        }
+        #topNavbar {
+            margin-bottom: 0px;
+        }
+        .platform {
+            margin-top: 50px;
+        }
+    </style>
+
+    <!-- Bootstrap core CSS and JQuery-->
+    <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+
+    <script>
+      function statusChangeCallback(response) {
+        console.log('statusChangeCallback');
+        console.log(response);
+        if (response.status === 'connected') {
+          getFBData(response.authResponse.accessToken);
+        } else {
+          window.location = "/";
+        }
+      }
+
+      window.fbAsyncInit = function() {
+      FB.init({
+        appId      : '1760632640869121',
+        cookie     : true,  // enable cookies to allow the server to access the session
+        xfbml      : true,  // parse social plugins on this page
+        version    : 'v2.8' // use graph api version 2.8
+      });
+      FB.getLoginStatus(function(response) {
+        statusChangeCallback(response);
+      });
+      };
+      (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "//connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+      }(document, 'script', 'facebook-jssdk'));
+
+      function getFBData(token) {
+        FB.api('/me?fields=id,name,email,link', function(response) {
+          console.log(response);
+          fbinfo = new Array();
+          var img = document.getElementById("profileImage").setAttribute("src", "http://graph.facebook.com/" + response.id + "/picture?type=normal")
+          document.getElementById("personal-info").innerHTML = "<p class='text-center'>"+response.name+"</p>"
+          FB.api('/me/friends;', function(response) {console.log(response);});
+        });
+      }
+    </script>
+</head>
+
+<body>
+
+<!-- Static navbar -->
+<nav id="topNavbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
+                    aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/map">Lioncomp</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav">
+                <li><a href="/map">Map</a></li>
+                <li><a href="/explore">Explore</a></li>
+                <li><a href="/friends">Friends</a></li>
+                <li class="active"><a href="/profile">Profile</a></li>
+                <li><a href="/shuttle">Shuttle</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="platform">
+    <div class="row">
+            <div class="col-lg-12 text-center">
+                <img class='img-responsive img-circle' id='profileImage' alt='' style='width:200px;height:200px;margin:0 auto'>
+                <div id='personal-info'></div>
+                <button type="button" class="btn btn-primary" onclick="myFacebookLogout()">Logout with Facebook</button>
+            </div>
+    </div>
+</div>
+
+<script>
+function myFacebookLogout() {
+  FB.logout(function(response) {location.reload();});
+}
+</script>
+
+<script src="../static/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Lioncomp</title>
+    <style>
+        html, body {
+            height: 100%;
+        }
+
+        #map {
+            height: 100%;
+        }
+
+        #topNavbar {
+            margin-bottom: 0px;
+        }
+
+        .platform {
+            margin-top: 50px;
+        }
+
+        #topLeftPanel {
+            margin-top: 60px;
+        }
+    </style>
+
+    <!-- Bootstrap core CSS and JQuery-->
+    <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+
+    <script>
+        function statusChangeCallback(response) {
+            console.log('statusChangeCallback');
+            console.log(response);
+            if (response.status !== 'connected') {
+                window.location = "/";
+            }
+        }
+        window.fbAsyncInit = function () {
+            FB.init({
+                appId: '1760632640869121',
+                cookie: true,  // enable cookies to allow the server to access the session
+                xfbml: true,  // parse social plugins on this page
+                version: 'v2.8' // use graph api version 2.8
+            });
+            FB.getLoginStatus(function (response) {
+                statusChangeCallback(response);
+            });
+        };
+        (function (d, s, id) {
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) return;
+            js = d.createElement(s);
+            js.id = id;
+            js.src = "//connect.facebook.net/en_US/sdk.js";
+            fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+    </script>
+</head>
+
+<body>
+
+<!-- Static navbar -->
+<nav id="topNavbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
+                    aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/map">Lioncomp</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav">
+                <li class="active"><a href="/map">Map</a></li>
+                <li><a href="/explore">Explore</a></li>
+                <li><a href="/friends">Friends</a></li>
+                <li><a href="/profile">Profile</a></li>
+                <li><a href="/shuttle">Shuttle</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="panel panel-default" id="topLeftPanel">
+    <div class="panel-heading">
+        <h3 class="panel-title">Find Way Home</h3>
+    </div>
+    <div class="panel-body">
+        <form class="form-horizontal">
+            <div class="form-group form-inline">
+                <div class="col-xs-3">
+                    <label for="origin">Origin: </label>
+                </div>
+                <div class="col-xs-8">
+                    <input type="text" class="form-control" id="origin" placeholder="Default Your Current Position">
+                </div>
+            </div>
+            <div class="form-group form-inline">
+                <div class="col-xs-3">
+                    <label for="destination">Destination: </label>
+                </div>
+                <div class="col-xs-8">
+                    <input type="text" class="form-control" id="destination" placeholder="Enter Desination">
+                </div>
+            </div>
+            <div class="form-group form-inline">
+                <div class="col-xs-3">
+                    <label for="departureTime">Departure Time: </label>
+                </div>
+                <div class="col-xs-8">
+                    <input type="time" class="form-control" id="departureTime">
+                </div>
+            </div>
+            <div class="form-group form-inline">
+                <div class="col-xs-2">
+                    <label for="travelMode">Travel Mode: </label>
+                </div>
+                <div class="col-xs-4">
+                    <select id="travelMode">
+                        <option value="WALKING">Walking</option>
+                        <option value="DRIVING">Driving</option>
+                        <option value="BICYCLING">Bicycling</option>
+                        <option value="TRANSIT">Transit</option>
+                    </select>
+                </div>
+                <div class="col-xs-2">
+                    <label for="travelType">Travel Type:</label>
+                </div>
+                <div class="col-xs-4">
+                    <select id="travelType">
+                        <option value="Home">Going Home</option>
+                        <option value="Eating">Eating</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="School">School</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group form-inline">
+                <div class="col-xs-3">
+                    <button type="button" class="btn btn-primary" id="goButton">Go!</button>
+                </div>
+            </div>
+            <div class="form-group form-inline">
+                <div class="col-xs-3">
+                    <button type="button" class="btn btn-primary" id="showPoliceStation">Show Police Station</button>
+                </div>
+                <div class="col-xs-offset-3 col-xs-3">
+                    <button type="button" class="btn btn-primary" id="hidePoliceStation">Hide Police Station</button>
+                </div>
+            </div>
+            <div class="form-group form-inline">
+                <div class="col-xs-3" id="groupDescriptionLabel">
+                </div>
+                <div class="col-xs-8" id="groupDescriptionBox">
+                </div>
+            </div>
+            <div class="form-group form-inline">
+                <div class="col-xs-3" id="createGroupButton">
+                </div>
+                <div class="col-xs-offset-2 col-xs-3" id="exploreGroupButton">
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<div id="map"></div>
+
+
+<script>
+    // Global variable for google API
+    var geocoder;
+    var map;
+    var socket;
+    var directionsService;
+    var directionsDisplay;
+
+    // Global variable for path
+    var origin;
+    var destination;
+    var originPosition;
+    var destinationPosition;
+    var departureTime;
+    var travelType;
+    var selectedMode;
+    var groupDescription;
+
+
+    var currentPosition;
+    var policeStationMarkers = [];
+
+    function initMap() {
+
+        // Init google map
+        var columbia = {lat: 40.806, lng: -73.963};
+        map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 16,
+            center: columbia
+        });
+
+        geocoder = new google.maps.Geocoder();
+        directionsService = new google.maps.DirectionsService();
+        directionsDisplay = new google.maps.DirectionsRenderer({
+            map: map
+        });
+
+        // Set panel to top left
+        var panel = document.getElementById('topLeftPanel');
+        panel.style.display = 'block';
+        map.controls[google.maps.ControlPosition.TOP_LEFT].push(panel);
+
+        // Init socketio
+        socket = io.connect(null, {port: location.port, rememberTransport: false});
+
+        socket.on('connect', function () {
+            console.log("Connected");
+        });
+
+        // Find current location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function (position) {
+                currentPosition = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+
+                // Add current location
+                addMarkerToMap(currentPosition, map, "My Location");
+            }, function () {
+                console.log("Error: The Geolocation service failed.");
+            });
+        } else {
+            window.alert('Error: Your brower does not support location service');
+        }
+    }
+
+    function addMarkerToMap(position, map, title) {
+        var marker = new google.maps.Marker({
+            position: position,
+            map: map,
+            title: title
+        });
+    }
+
+    $('#goButton').on('click', function () {
+        origin = document.getElementById("origin").value;
+        destination = document.getElementById("destination").value;
+        departureTime = document.getElementById("departureTime").value;
+        travelType = document.getElementById("travelType").value;
+        selectedMode = document.getElementById("travelMode").value;
+
+        originPosition = currentPosition;
+        destinationPosition = {lat: 0, lng: 0};
+
+        geocoder.geocode({'address': origin}, function (results1, status) {
+            if (status == 'OK') {
+                geocoder.geocode({'address': destination}, function (results2, status) {
+                    if (status == 'OK') {
+                        originPosition['lat'] = results1[0].geometry.location.lat();
+                        originPosition['lng'] = results1[0].geometry.location.lng();
+                        destinationPosition['lat'] = results2[0].geometry.location.lat();
+                        destinationPosition['lng'] = results2[0].geometry.location.lng();
+                        console.log("Not Empty");
+                        console.log(originPosition);
+                        console.log(destinationPosition);
+                        sendUserPath(originPosition, destinationPosition, selectedMode, travelType, departureTime);
+                        findRoute(originPosition, destinationPosition, selectedMode, departureTime);
+                    }
+                });
+            } else {
+                geocoder.geocode({'address': destination}, function (results2, status) {
+                    if (status == 'OK') {
+                        destinationPosition['lat'] = results2[0].geometry.location.lat();
+                        destinationPosition['lng'] = results2[0].geometry.location.lng();
+                        console.log("Empty");
+                        console.log(originPosition);
+                        console.log(destinationPosition);
+                        sendUserPath(origin, destination, originPosition, destinationPosition, selectedMode, travelType, departureTime);
+                        findRoute(originPosition, destinationPosition, selectedMode, departureTime);
+                    }
+                });
+            }
+        });
+
+        // Update HTML
+        var createGroupButtonParent = document.getElementById("createGroupButton");
+        createGroupButtonParent.innerHTML = '<button type="button" class="btn btn-primary" id="createGroup">Create Group</button>';
+        var exploreGroupButtonParent = document.getElementById("exploreGroupButton");
+        exploreGroupButtonParent.innerHTML = '<button type="button" class="btn btn-primary" id="exploreGroup">Explore Group</button>';
+        var groupDescriptionLabelParent = document.getElementById("groupDescriptionLabel");
+        groupDescriptionLabelParent.innerHTML = '<label for="groupDescriptionInputBox">Group Description</label>';
+        var groupDescriptionBoxParent = document.getElementById("groupDescriptionBox");
+        groupDescriptionBoxParent.innerHTML = '<input type="text" class="form-control" id="groupDescriptionInputBox" placeholder="Group Description">';
+    });
+
+    $('#showPoliceStation').on('click', function () {
+
+        var request = {
+            location: currentPosition,
+            radius: '1000',
+            query: 'police station'
+        };
+
+        var service = new google.maps.places.PlacesService(map);
+        service.textSearch(request, showPoliceStations);
+    });
+
+    $('#hidePoliceStation').on('click', function () {
+        for (var i = 0; i < policeStationMarkers.length; i++) {
+            policeStationMarkers[i].setMap(null);
+        }
+    });
+
+    $('#createGroupButton').on('click', function () {
+        groupDescription = document.getElementById("groupDescriptionInputBox").value;
+
+        var createGroupPath = {
+            origin: origin,
+            destination: destination,
+            originPosition: originPosition,
+            destinationPosition: destinationPosition,
+            travelMode: selectedMode,
+            travelType: travelType,
+            departureTime: departureTime,
+            groupDescription: groupDescription
+        };
+        socket.emit('createGroupPath', createGroupPath, function(){
+            window.location = "/explore";
+        });
+    });
+
+    $('#exploreGroupButton').on('click', function () {
+         window.location = "/explore";
+    });    
+
+    function sendUserPath(origin, destination, originPosition, destinationPosition, selectedMode, travelType, departureTime) {
+        var userPath = {
+            origin: origin,
+            destination: destination,
+            originPosition: originPosition,
+            destinationPosition: destinationPosition,
+            travelMode: selectedMode,
+            travelType: travelType,
+            departureTime: departureTime
+        };
+        socket.emit('userPath', userPath);
+    }
+
+    // Find route on google map given two positions
+    function findRoute(originPosition, destinationPosition, selectedMode, departureTime) {
+        var request = {
+            destination: originPosition,
+            origin: destinationPosition,
+            travelMode: selectedMode
+        };
+
+        directionsService.route(request, function (response, status) {
+            if (status == "OK") {
+                console.log("Executed");
+                directionsDisplay.setDirections(response);
+            } else {
+                window.alert('Directions request failed due to ' + status);
+            }
+        });
+    }
+
+    function showPoliceStations(results, status) {
+        if (status == google.maps.places.PlacesServiceStatus.OK) {
+            for (var i = 0; i < results.length; i++) {
+                var place = results[i];
+                var marker = new google.maps.Marker({
+                    position: place.geometry.location,
+                    map: map,
+                    title: "Police Station"
+                });
+                policeStationMarkers.push(marker);
+            }
+        }
+    }
+
+</script>
+
+<script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDX9Fcx_6cIfBeBXa1bhBbHNy6Lssl-8Do&libraries=places&callback=initMap">
+</script>
+<script src="../static/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
+</body>
+</html>

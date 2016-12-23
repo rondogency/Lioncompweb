@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Lioncomp</title>
+    <style>
+        html, body {
+            height: 100%;
+        }
+
+        #topNavbar {
+            margin-bottom: 0px;
+        }
+
+        #map {
+            height: 100%;
+        }
+
+        #topLeftPanel {
+            margin-top: 60px;
+        }
+    </style>
+
+    <!-- Bootstrap core CSS and JQuery-->
+    <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script>
+        function statusChangeCallback(response) {
+            console.log('statusChangeCallback');
+            console.log(response);
+            if (response.status !== 'connected') {
+                window.location = "/";
+            }
+        }
+        window.fbAsyncInit = function () {
+            FB.init({
+                appId: '1760632640869121',
+                cookie: true,  // enable cookies to allow the server to access the session
+                xfbml: true,  // parse social plugins on this page
+                version: 'v2.8' // use graph api version 2.8
+            });
+            FB.getLoginStatus(function (response) {
+                statusChangeCallback(response);
+            });
+        };
+        (function (d, s, id) {
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) return;
+            js = d.createElement(s);
+            js.id = id;
+            js.src = "//connect.facebook.net/en_US/sdk.js";
+            fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+    </script>
+</head>
+
+<body>
+
+<!-- Static navbar -->
+<nav id="topNavbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
+                    aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/map">Lioncomp</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav">
+                <li><a href="/map">Map</a></li>
+                <li><a href="/explore">Explore</a></li>
+                <li><a href="/friends">Friends</a></li>
+                <li><a href="/profile">Profile</a></li>
+                <li class="active"><a href="/shuttle">Shuttle</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+
+<div class="panel panel-default" id="topLeftPanel">
+    <div class="panel-heading">
+        <h3 class="panel-title">Next Shuttle Bus</h3>
+    </div>
+    <div class="panel-body">
+        <div class="form-group form-inline">
+            <label for="redLineTime" style="color:red">Red Line:</label>
+            <h5 id="redLineTime"></h5>
+        </div>
+        <div class="form-group form-inline">
+            <label for="blueLineTime" style="color:blue">Blue Line:</label>
+            <h5 id="blueLineTime"></h5>
+        </div>
+    </div>
+</div>
+<div id="map"></div>
+
+
+<script>
+
+    function initMap() {
+        var columbia = {lat: 40.806, lng: -73.963};
+        map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 15,
+            center: columbia,
+            mapTypeId: 'terrain'
+        });
+
+        var panel = document.getElementById('topLeftPanel');
+        panel.style.display = 'block';
+        map.controls[google.maps.ControlPosition.TOP_LEFT].push(panel);
+
+        var googleMarkers = [];
+
+        // Draw shuttle bus route
+        var shuttleBusOneCoordinates = [
+            {lat: 40.806809, lng: -73.961018},
+            {lat: 40.802984, lng: -73.963885},
+            {lat: 40.801751, lng: -73.961065},
+            {lat: 40.799228, lng: -73.962871},
+            {lat: 40.798672, lng: -73.961484},
+            {lat: 40.808863, lng: -73.954034},
+            {lat: 40.808414, lng: -73.952972},
+            {lat: 40.810090, lng: -73.953084},
+            {lat: 40.811446, lng: -73.952111},
+            {lat: 40.812297, lng: -73.954094},
+            {lat: 40.814151, lng: -73.955717},
+            {lat: 40.818941, lng: -73.952250},
+            {lat: 40.820170, lng: -73.955213},
+            {lat: 40.818270, lng: -73.956635},
+            {lat: 40.819376, lng: -73.959386},
+            {lat: 40.818001, lng: -73.960394},
+            {lat: 40.813378, lng: -73.956293},
+            {lat: 40.806809, lng: -73.961018}
+        ];
+
+        var shuttleBusTwoCoordinates = [
+            {lat: 40.806809, lng: -73.961018},
+            {lat: 40.809349, lng: -73.959249},
+            {lat: 40.810511, lng: -73.961957},
+            {lat: 40.818162, lng: -73.956350},
+            {lat: 40.819417, lng: -73.959363},
+            {lat: 40.817337, lng: -73.960823},
+            {lat: 40.815915, lng: -73.960544},
+            {lat: 40.815544, lng: -73.959725},
+            {lat: 40.810956, lng: -73.963078},
+            {lat: 40.810592, lng: -73.962192},
+            {lat: 40.801656, lng: -73.968583},
+            {lat: 40.802263, lng: -73.970069},
+            {lat: 40.804807, lng: -73.968183},
+            {lat: 40.802987, lng: -73.963884},
+            {lat: 40.806809, lng: -73.961018}
+        ];
+
+        var shuttleOnePath = new google.maps.Polyline({
+            path: shuttleBusOneCoordinates,
+            geodesic: true,
+            strokeColor: '#2196F3',
+            strokeOpacity: 1.0,
+            strokeWeight: 2
+        });
+        shuttleOnePath.setMap(map);
+
+        var shuttleTwoPath = new google.maps.Polyline({
+            path: shuttleBusTwoCoordinates,
+            geodesic: true,
+            strokeColor: '#F44336',
+            strokeOpacity: 1.0,
+            strokeWeight: 2
+        });
+        shuttleTwoPath.setMap(map);
+
+
+        // Add shuttle stops
+        var shuttleBusOneStops = [
+            {lat: 40.806809, lng: -73.961018},
+            {lat: 40.802984, lng: -73.963885},
+            {lat: 40.801751, lng: -73.961065},
+            {lat: 40.799228, lng: -73.962871},
+            {lat: 40.800591, lng: -73.960083},
+            {lat: 40.803121, lng: -73.958237},
+            {lat: 40.805073, lng: -73.956820},
+            {lat: 40.806974, lng: -73.955413},
+            {lat: 40.808863, lng: -73.954034},
+            {lat: 40.810090, lng: -73.953084},
+            {lat: 40.814151, lng: -73.955717},
+            {lat: 40.818941, lng: -73.952250},
+            {lat: 40.820170, lng: -73.955213},
+            {lat: 40.818270, lng: -73.956635},
+            {lat: 40.819376, lng: -73.959386},
+            {lat: 40.818001, lng: -73.960394},
+            {lat: 40.813378, lng: -73.956293},
+            {lat: 40.810021, lng: -73.958754},
+            {lat: 40.806809, lng: -73.961018}
+        ];
+
+        for (var i = 0; i < shuttleBusOneStops.length; i++) {
+            var marker = new google.maps.Marker({
+                position: shuttleBusOneStops[i],
+                icon: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+                map: map
+            });
+            googleMarkers.push(marker);
+        }
+
+        var shuttleBusTwoStops = [
+            {lat: 40.806809, lng: -73.961018},
+            {lat: 40.810511, lng: -73.961957},
+            {lat: 40.811771, lng: -73.960980},
+            {lat: 40.815075, lng: -73.958617},
+            {lat: 40.816874, lng: -73.957296},
+            {lat: 40.818979, lng: -73.958360},
+            {lat: 40.817337, lng: -73.960823},
+            {lat: 40.812464, lng: -73.962003},
+            {lat: 40.810858, lng: -73.962862},
+            {lat: 40.807989, lng: -73.964153},
+            {lat: 40.805210, lng: -73.966143},
+            {lat: 40.803866, lng: -73.968931},
+            {lat: 40.802263, lng: -73.970069},
+            {lat: 40.804807, lng: -73.968183},
+            {lat: 40.802987, lng: -73.963884}
+        ];
+
+        for (var i = 0; i < shuttleBusTwoStops.length; i++) {
+            var marker = new google.maps.Marker({
+                position: shuttleBusTwoStops[i],
+                icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                map: map
+            });
+            googleMarkers.push(marker);
+        }
+
+        // Find current time
+        var currentDate = new Date();
+        var currentHour = currentDate.getHours();
+        var currentMinute = currentDate.getMinutes();
+        var nextBusTime = "";
+
+        if (currentHour > 3 && currentHour < 18) {
+            nextBusTime = "6:00 PM";
+        } else if (currentMinute < 30) {
+            nextBusTime = currentHour.toString() + ":30" + " PM";
+        } else {
+            nextBusTime = (currentHour + 1).toString() + ":00 PM";
+        }
+
+        var redLineTime = document.getElementById('redLineTime');
+        redLineTime.innerText = nextBusTime;
+        var blueLineTime = document.getElementById('blueLineTime');
+        blueLineTime.innerText = nextBusTime;
+    }
+</script>
+<script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDX9Fcx_6cIfBeBXa1bhBbHNy6Lssl-8Do&callback=initMap">
+</script>
+<script src="../static/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
+</body>
+</html>
