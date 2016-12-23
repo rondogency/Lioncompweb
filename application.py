@@ -14,7 +14,7 @@ application = Flask(__name__)
 
 socketio = SocketIO(application)
 
-acc_token = 'EAAZABSTsjkwEBAKMxtsaevgCvZA6fUUDt9FuKntmErXdDfAkpswmKIzvNpd2Ihewd6flYURcZBOtvuWiRZB65LJxw1gkHmuf6jNAYDTVnPH5IbuqZCbN8fNTZBMIntzvnrcz9Yaa0bqeuDyNxfXldEcM76c3MpmtOvgGBwTZB2asAZDZD'
+acc_token = 'EAAZABSTsjkwEBABd5p2xh74xyergfCOs8uAVDn9H6qNPss2JRF8Xf6iDje46NZATiI6gCtnhDdNx7xVBYvi2zmudkwakzuEPK8gd67ZAA3mfNeDeWhPcQOOlrYyBqiVL8lUXkWUG4Yf4ZBgu0RfUGp0MjSl2gexopOSuBweungZDZD'
 
 # boto3.resource(
 #             'dynamodb',
@@ -24,10 +24,18 @@ acc_token = 'EAAZABSTsjkwEBAKMxtsaevgCvZA6fUUDt9FuKntmErXdDfAkpswmKIzvNpd2Ihewd6
 #             aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'])
 
 db = boto3.resource('dynamodb')
+s3 = boto3.resource('s3')
 
 user_table = db.Table('User')
 route_table = db.Table('Route')
 group_table = db.Table('Group')
+
+
+# Get SNS resource
+client = boto3.client('sns', region_name = 'us-west-2')
+response = client.create_topic(Name = 'emergencyContact')
+topicArn = response['TopicArn']
+subscribeResponse = client.subscribe(TopicArn = topicArn, Protocol = 'SMS', Endpoint = '1-917-331-4849')
 
 
 @application.route('/', methods=['GET', 'POST', 'PUT'])
@@ -66,11 +74,6 @@ def explore():
             restGroup.append(item)
     context = dict(restGroup=restGroup, activeGroup=activeGroup, owner=owner)
     return render_template('explore.html', **context)
-
-
-@application.route('/friends')
-def friends():
-    return render_template('friends.html')
 
 
 @application.route('/profile')
@@ -133,14 +136,13 @@ def handle_userProfile(message):
     print('User created')
 
 
-
 @socketio.on('createGroupPath')
 def handle_createGroup(message):
     graph = facebook.GraphAPI(access_token=acc_token)
     Profile = graph.get_object(id='me?')
     user_id = int(Profile['id'])
     user_name = Profile['name']
-    users = [{'id':user_id,'name':user_name}]
+    users = [{'id': user_id, 'name': user_name}]
 
     origin = str(message.get('origin'))
     destination = str(message.get('destination'))
@@ -180,12 +182,12 @@ def handle_createGroup(message):
     room = group_id
     join_room(room)
     print('Group created')
-    open(r'logs.txt', 'a').write('\n' + str(dict(
-        originLat=decimal.Decimal(origins[0]),
-        originLong=decimal.Decimal(origins[1]),
-        destinationLat=decimal.Decimal(dests[0]),
-        destinationLong=decimal.Decimal(dests[1]), travel_mode=travel_mode,
-        travel_type=travel_type, user=user_id)))
+    open(r'logs.txt', 'a').write('\n\n' + str(dict(
+        origin=origin,
+        destination=destination,
+        departure_time=time,
+        travel_type=travel_type, 
+        users=users)))
     s3.Bucket('lionlog').upload_file('logs.txt',
                                      'logs.txt')
 
@@ -203,7 +205,7 @@ def handle_join_group(message):
         },
         UpdateExpression='SET user_list = list_append(user_list, :user)',
         ExpressionAttributeValues={
-            ':user': [{'id':user_id,'name':user_name}]
+            ':user': [{'id': user_id, 'name': user_name}]
         }
     )
     response = group_table.get_item(
@@ -219,7 +221,6 @@ def handle_join_group(message):
     s3.Bucket('lionlog').upload_file('logs.txt',
                                      'logs.txt')
     room = group_id
-    print(room)
     join_room(room)
     socketio.emit('notification', {'content': str(user_name) + ' has entered group!'}, room=room)
     print('User added to group')
@@ -252,7 +253,6 @@ def handle_send_chat(message):
     user_name = Profile['name']
     group_id = message.get('GroupID')
     text = message.get('content')
-    print(text)
     group_table.update_item(
         Key={
             'GroupID': group_id
@@ -263,7 +263,6 @@ def handle_send_chat(message):
         }
     )
     room = group_id
-    print(room)
     socketio.emit('receiveChat', {'content': text}, room=room)
 
 
@@ -272,6 +271,12 @@ def handle_join_room(message):
     room = message.get('GroupID')
     join_room(room)
 
+
+@socketio.on('emergency')
+def handle_emergency(coordinates):
+    message = "Something bad happened on me! Check " + json.dumps(coordinates)
+
+    publichResponse = client.publish(TopicArn = topicArn, Message = message)
 
 # run the app.
 if __name__ == "__main__":
