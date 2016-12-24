@@ -10,6 +10,19 @@
         html, body {
             height: 100%;
         }
+        .background-wrap {
+            position: fixed;
+            z-index: -1000;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            top: 0;
+            left: 0;
+        }
+
+        #indexcontent {
+            z-index: 100;
+        }
     </style>
 
     <!-- Bootstrap core CSS and JQuery-->
@@ -48,14 +61,25 @@
 
 <body>
 
-<div class="container-fluid">
-    <div class="row-fluid">
-        <div class="centering text-center">
-            <img class='img-responsive' src='../static/asset/lioncomp.jpg' alt=''
-                 style='width:200px;height:200px;margin:0 auto'>
-            <button type="button" class="btn btn-primary btn-lg" onclick="myFacebookLogin()">Login with Facebook
-            </button>
-        </div>
+<div class="background-wrap">
+    <video id="backgroundVideo" preload="auto" autoplay="true" loop="loop" muted="muted">
+        <source src="../static/video/BackgroundVideo.mp4" type="video/mp4">
+        Video not supported
+    </video>
+</div>
+
+<div class="content" id="indexcontent">
+    <div class="row" style="visibility: hidden">
+        <h1>Columbia University</h1>
+        <h2>New York</h2>
+    </div>
+    <div class="row">
+           <div class="centering text-center">
+               <img class='img-responsive' src='../static/asset/lioncomp.jpg' alt=''
+                    style='width:200px;height:200px;margin:0 auto'>
+               <button type="button" class="btn btn-primary btn-lg" onclick="myFacebookLogin()">Login with Facebook
+               </button>
+           </div>
     </div>
 </div>
 

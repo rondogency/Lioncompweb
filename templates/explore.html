@@ -150,7 +150,7 @@
                                         </div>
                                         <div class="col-xs-3">
                                         {% for user in activeGroup.user_list %}
-                                            <a href="http://www.facebook.com" target="_blank">{{ user.name }}</a>
+                                            <a href="{{ user.link }}" target="_blank">{{ user.name }}</a>
                                         {% endfor %}
                                         </div>
                                     </div>
@@ -249,7 +249,7 @@
                                         </div>
                                         <div class="col-xs-8">
                                         {% for user in group.user_list %}
-                                            <a href="http://www.facebook.com" target="_blank">{{ user.name }}</a>
+                                            <a href="{{ user.link }}" target="_blank">{{ user.name }}</a>
                                         {% endfor %}
                                         </div>
                                     </div>
@@ -277,12 +277,12 @@
     socket.on('notification', function(msg) {
         window.alert(msg.content);
         console.log(msg.content);
-        location.reload();
+        //location.reload();
     });
 
     socket.on('receiveChat', function(msg) {
         console.log(msg);
-         $('#chatarea').append('<p>Ziyi Mu says: '+msg.content+'</p>');
+         $('#chatarea').append('<p>'+msg.name+' says: '+msg.content+'</p>');
     });
 
     function joinGroup(id) {
@@ -290,7 +290,14 @@
         var currentGroupID = joinGroupButton.getAttribute("groupID");
 
         var groupInfo = {GroupID: currentGroupID, accessToken: token};
-        socket.emit("joinGroup", groupInfo);
+        socket.emit("joinGroup", groupInfo, function() {
+        var url = '/explore';
+        console.log(token);
+        var form = $('<form action="' + url + '" method="post">' + 
+            '<input type="text" name="accessToken" value="' + token + '" />' +
+            '</form>');
+        form.submit();
+        });
     }
 
     function leaveGroup(id) {
@@ -298,7 +305,14 @@
         var currentGroupID = LeaveGroupButton.getAttribute("groupID");
 
         var groupInfo = {GroupID: currentGroupID, accessToken: token};
-        socket.emit("leaveGroup", groupInfo);
+        socket.emit("leaveGroup", groupInfo, function() {
+        var url = '/explore';
+        console.log(token);
+        var form = $('<form action="' + url + '" method="post">' + 
+            '<input type="text" name="accessToken" value="' + token + '" />' +
+            '</form>');
+        form.submit();
+        });
     }
 
     function sendChat() {

@@ -14,16 +14,20 @@ application = Flask(__name__)
 
 socketio = SocketIO(application)
 
-acc_token = 'EAAZABSTsjkwEBABd5p2xh74xyergfCOs8uAVDn9H6qNPss2JRF8Xf6iDje46NZATiI6gCtnhDdNx7xVBYvi2zmudkwakzuEPK8gd67ZAA3mfNeDeWhPcQOOlrYyBqiVL8lUXkWUG4Yf4ZBgu0RfUGp0MjSl2gexopOSuBweungZDZD'
+#acc_token = 'EAAZABSTsjkwEBAEZAONWiW4jSnZBcI78zZA9hxoUot4ZCLJ28rZBXtZBkRtMgeA7mCUomWEZBSZCd1vhru9HZASvx5731bd81wB2ZBLVHnBdTGFoHgZAYy1Y0IPReHnSQHo095ZAU6VKRADNjjBZC0c6JsEcMrp1TG0KB2xbZBscbZCSzIvzSQZDZD'
 
-boto3.resource(
+db = boto3.resource(
              'dynamodb',
              region_name='us-west-2',
              aws_secret_access_key='0wQ00CP6t6MPP/aFH3QAz7p5bUuMF+cy5Dt3G1ap',
              aws_access_key_id='AKIAIDPLNXWXJJA7NCEA')
 
-db = boto3.resource('dynamodb', region_name = 'us-west-2')
-#s3 = boto3.resource('s3', region_name = 'us-west-2')
+#db = boto3.resource('dynamodb', region_name = 'us-west-2')
+s3 = boto3.resource(
+            's3', 
+            region_name = 'us-west-2',
+            aws_secret_access_key='0wQ00CP6t6MPP/aFH3QAz7p5bUuMF+cy5Dt3G1ap',
+            aws_access_key_id='AKIAIDPLNXWXJJA7NCEA')
 
 user_table = db.Table('User')
 route_table = db.Table('Route')
@@ -31,10 +35,10 @@ group_table = db.Table('Group')
 
 
 # Get SNS resource
-#client = boto3.client('sns', region_name = 'us-west-2')
-#response = client.create_topic(Name = 'emergencyContact')
-#topicArn = response['TopicArn']
-#subscribeResponse = client.subscribe(TopicArn = topicArn, Protocol = 'SMS', Endpoint = '1-917-331-4849')
+client = boto3.client('sns', region_name = 'us-west-2')
+response = client.create_topic(Name = 'emergencyContact')
+topicArn = response['TopicArn']
+subscribeResponse = client.subscribe(TopicArn = topicArn, Protocol = 'SMS', Endpoint = '1-917-331-4849')
 
 
 @application.route('/', methods=['GET', 'POST', 'PUT'])
@@ -95,15 +99,11 @@ def profile():
         response = group_table.scan(
             FilterExpression=Attr('flag').eq(1)
         )
-        restGroup = []
         activeGroup = []
-        owner = False
         items = response['Items']
         for item in items:
             if decimal.Decimal(user_id) in [dic['id'] for dic in item['user_list']]:
-                if decimal.Decimal(user_id) == [dic['id'] for dic in item['user_list']][0]:
-                    activeGroup.append(item)
-
+                activeGroup.append(item)
 
         context = dict(activeGroup=activeGroup)
         return render_template('profile.html', **context)
@@ -171,11 +171,13 @@ def handle_createGroup(message):
     acc_token = str(message.get('accessToken'))
     print(acc_token)
     graph = facebook.GraphAPI(access_token=acc_token)
-    Profile = graph.get_object(id='me?')
+    Profile = graph.get_object(id='me')
     user_id = int(Profile['id'])
     user_name = Profile['name']
-    users = [{'id': user_id, 'name': user_name}]
-    print('Group created 111111111111222222222222222')
+    link = graph.get_object(id='me?fields=link')
+    user_link = link['link']
+    users = [{'id': user_id, 'name': user_name, 'link': user_link}]
+
     origin = str(message.get('origin'))
     destination = str(message.get('destination'))
     originPosition = str(message.get('originPosition'))
@@ -189,7 +191,7 @@ def handle_createGroup(message):
         description = message.get('groupDescription')
     else:
         description = 'No description'
-    print('Group created 111111111111')
+
     conversation = [{'name': user_name, 'content': 'Group Created'}]
     time = message.get('departureTime')
     group_id = str(uuid.uuid4())
@@ -214,14 +216,14 @@ def handle_createGroup(message):
     room = group_id
     join_room(room)
     print('Group created')
-    open(r'logs.txt', 'a').write('\n\n' + str(dict(
+    open(r'logs.txt', 'a').write('\n\n'+'Group Created: '+str(dict(
         origin=origin,
         destination=destination,
         departure_time=time,
         travel_type=travel_type, 
-        users=users)))
-    #s3.Bucket('lionlog').upload_file('logs.txt',
-    #                                 'logs.txt')
+        users=user_name)) + '\n\n')
+    s3.Bucket('lionlogger').upload_file('logs.txt',
+                                     'logs.txt')
 
 
 @socketio.on('joinGroup')
@@ -232,6 +234,9 @@ def handle_join_group(message):
     Profile = graph.get_object(id='me')
     user_id = int(Profile['id'])
     user_name = Profile['name']
+    link = graph.get_object(id='me?fields=link')
+    user_link = link['link']
+
     group_id = message.get('GroupID')
     group_table.update_item(
         Key={
@@ -239,7 +244,7 @@ def handle_join_group(message):
         },
         UpdateExpression='SET user_list = list_append(user_list, :user)',
         ExpressionAttributeValues={
-            ':user': [{'id': user_id, 'name': user_name}]
+            ':user': [{'id': user_id, 'name': user_name, 'link': user_link}]
         }
     )
     response = group_table.get_item(
@@ -251,9 +256,9 @@ def handle_join_group(message):
     item['user_list'] = user_id
 
     print('User added to group')
-    open(r'logs.txt', 'a').write('\n\n' + str(item))
-    #s3.Bucket('lionlog').upload_file('logs.txt',
-    #                                 'logs.txt')
+    open(r'logs.txt', 'a').write('\n\n' + user_name + ' Join Group ' + str(item['GroupID']))
+    s3.Bucket('lionlogger').upload_file('logs.txt',
+                                     'logs.txt')
     room = group_id
     join_room(room)
     socketio.emit('notification', {'content': str(user_name) + ' has entered group!'}, room=room)
@@ -301,7 +306,7 @@ def handle_send_chat(message):
         }
     )
     room = group_id
-    socketio.emit('receiveChat', {'content': text}, room=room)
+    socketio.emit('receiveChat', {'name':user_name,'content': text}, room=room)
 
 
 @socketio.on('room')
@@ -314,7 +319,7 @@ def handle_join_room(message):
 def handle_emergency(coordinates):
     message = "Something bad happened on me! Check " + json.dumps(coordinates)
 
-    #publichResponse = client.publish(TopicArn = topicArn, Message = message)
+    publichResponse = client.publish(TopicArn = topicArn, Message = message)
 
 
 @application.route('/videoTest')

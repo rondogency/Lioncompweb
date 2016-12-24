@@ -130,7 +130,7 @@
                 </div>
                 <div class="col-xs-4">
                     <select id="travelMode">
-                        <option value="WALKING">Walking</option>
+                        <option selected value="WALKING">Walking</option>
                         <option value="DRIVING">Driving</option>
                         <option value="BICYCLING">Bicycling</option>
                         <option value="TRANSIT">Transit</option> 
@@ -424,8 +424,14 @@
             groupDescription: groupDescription,
             accessToken: token
         };
-        console.log('Executed fffff');
-        socket.emit('createGroupPath', createGroupPath);
+        socket.emit('createGroupPath', createGroupPath, function() {
+        var url = '/explore';
+        console.log(token);
+        var form = $('<form action="' + url + '" method="post">' + 
+            '<input type="text" name="accessToken" value="' + token + '" />' +
+            '</form>');
+        form.submit();
+        });
     });
 
 
