@@ -14,20 +14,18 @@ application = Flask(__name__)
 
 socketio = SocketIO(application)
 
-#acc_token = 'EAAZABSTsjkwEBAEZAONWiW4jSnZBcI78zZA9hxoUot4ZCLJ28rZBXtZBkRtMgeA7mCUomWEZBSZCd1vhru9HZASvx5731bd81wB2ZBLVHnBdTGFoHgZAYy1Y0IPReHnSQHo095ZAU6VKRADNjjBZC0c6JsEcMrp1TG0KB2xbZBscbZCSzIvzSQZDZD'
-
 db = boto3.resource(
              'dynamodb',
              region_name='us-west-2',
-             aws_secret_access_key='0wQ00CP6t6MPP/aFH3QAz7p5bUuMF+cy5Dt3G1ap',
-             aws_access_key_id='AKIAIDPLNXWXJJA7NCEA')
+             aws_secret_access_key='',
+             aws_access_key_id='')
 
 #db = boto3.resource('dynamodb', region_name = 'us-west-2')
 s3 = boto3.resource(
             's3', 
             region_name = 'us-west-2',
-            aws_secret_access_key='0wQ00CP6t6MPP/aFH3QAz7p5bUuMF+cy5Dt3G1ap',
-            aws_access_key_id='AKIAIDPLNXWXJJA7NCEA')
+            aws_secret_access_key='',
+            aws_access_key_id='')
 
 user_table = db.Table('User')
 route_table = db.Table('Route')
